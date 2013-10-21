@@ -1,5 +1,5 @@
 /*  This file is part of the Tufão project
-    Copyright (C) 2011-2013 Vinícius dos Santos Oliveira <vini.ipsmaker@gmail.com>
+    Copyright (C) 2011 Vinícius dos Santos Oliveira <vini.ipsmaker@gmail.com>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -19,11 +19,11 @@
 #ifndef TUFAO_PRIV_REASONPHRASE_H
 #define TUFAO_PRIV_REASONPHRASE_H
 
-#include "../httpserverresponse.h"
+#include "../tufao_global.h"
 
 namespace Tufao {
 
-QByteArray reasonPhrase(HttpResponseStatus statusCode);
+QByteArray reasonPhrase(int statusCode);
 
 } // namespace Tufao
 

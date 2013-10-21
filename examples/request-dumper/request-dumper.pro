@@ -1,7 +1,7 @@
 TARGET = request-dumper
 TEMPLATE = app
 
-CONFIG += C++11 TUFAO1
+CONFIG += TUFAO0
 
 SOURCES += main.cpp \
     mainhandler.cpp

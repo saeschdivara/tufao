@@ -77,48 +77,46 @@ public:
     /*!
      * Implements SessionStore::hasSession.
      */
-    bool hasSession(const HttpServerRequest &request) const override;
+    bool hasSession(const HttpServerRequest *request) const;
 
     /*!
      * Implements SessionStore::removeSession.
      */
-    void removeSession(const HttpServerRequest &request,
-                       HttpServerResponse &response) override;
+    void removeSession(const HttpServerRequest *request,
+                       HttpServerResponse *response);
 
     /*!
      * Implements SessionStore::properties.
      */
-    QList<QByteArray> properties(const HttpServerRequest &request,
-                                 const HttpServerResponse &response)
-    const override;
+    QList<QByteArray> properties(const HttpServerRequest *request,
+                                 const HttpServerResponse *response) const;
 
     /*!
      * Implements SessionStore::hasProperty.
      */
-    bool hasProperty(const HttpServerRequest &request,
-                     const HttpServerResponse &response,
-                     const QByteArray &key) const override;
+    bool hasProperty(const HttpServerRequest *request,
+                     const HttpServerResponse *response,
+                     const QByteArray &key) const;
 
     /*!
      * Implements SessionStore::property
      */
-    QVariant property(const HttpServerRequest &request,
-                      HttpServerResponse &response,
-                      const QByteArray &key) const override;
+    QVariant property(const HttpServerRequest *request,
+                      HttpServerResponse *response,
+                      const QByteArray &key) const;
 
     /*!
      * Implements SessionStore::setProperty.
      */
-    void setProperty(const HttpServerRequest &request,
-                     HttpServerResponse &response, const QByteArray &key,
-                     const QVariant &value) override;
+    void setProperty(const HttpServerRequest *request,
+                     HttpServerResponse *response, const QByteArray &key,
+                     const QVariant &value);
 
     /*!
      * Implements SessionStore::removeProperty.
      */
-    void removeProperty(const HttpServerRequest &request,
-                        HttpServerResponse &response,
-                        const QByteArray &key) override;
+    void removeProperty(const HttpServerRequest *request,
+                        HttpServerResponse *response, const QByteArray &key);
 
     /*!
      * Returns a reference to the same store every time it's called. It acts

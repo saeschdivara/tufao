@@ -43,10 +43,10 @@ SessionStore::~SessionStore()
     delete priv;
 }
 
-QByteArray SessionStore::session(const HttpServerRequest &request) const
+QByteArray SessionStore::session(const HttpServerRequest *request) const
 {
     // init variables
-    QList<QByteArray> headers(request.headers().values("Cookie"));
+    QList<QByteArray> headers(request->headers().values("Cookie"));
 
     // try to find a compatible cookie...
     // ...and returns the first
@@ -64,11 +64,11 @@ QByteArray SessionStore::session(const HttpServerRequest &request) const
     return QByteArray();
 }
 
-QByteArray SessionStore::session(const HttpServerRequest &request,
-                                 const HttpServerResponse &response) const
+QByteArray SessionStore::session(const HttpServerRequest *request,
+                                 const HttpServerResponse *response) const
 {
     // init variables
-    QList<QByteArray> headers(response.headers().values("Set-Cookie"));
+    QList<QByteArray> headers(response->headers().values("Set-Cookie"));
 
     // try to find a compatible cookie...
     // ...and returns the first
@@ -86,29 +86,29 @@ QByteArray SessionStore::session(const HttpServerRequest &request,
     return session(request);
 }
 
-void SessionStore::setSession(HttpServerResponse &response,
+void SessionStore::setSession(HttpServerResponse *response,
                               const QByteArray &session) const
 {
-    response.headers()
+    response->headers()
         .insert("Set-Cookie",
                 settings.cookie(signSession(session)).toRawForm());
 }
 
-void SessionStore::unsetSession(HttpServerResponse &response) const
+void SessionStore::unsetSession(HttpServerResponse *response) const
 {
     QNetworkCookie cookie(settings.cookie());
     cookie.setExpirationDate(PAST);
-    response.headers().insert("Set-Cookie", cookie.toRawForm());
+    response->headers().insert("Set-Cookie", cookie.toRawForm());
 }
 
-void SessionStore::resetSession(HttpServerRequest &request) const
+void SessionStore::resetSession(HttpServerRequest *request) const
 {
     // init variables
-    QList<QByteArray> headers(request.headers().values("Cookie"));
+    QList<QByteArray> headers(request->headers().values("Cookie"));
     QByteArray newValue;
 
     // remove old cookies
-    request.headers().remove("Cookie");
+    request->headers().remove("Cookie");
 
     // find cookies that don't match this store's settings
     for (int i = 0;i != headers.size();++i) {
@@ -129,7 +129,7 @@ void SessionStore::resetSession(HttpServerRequest &request) const
     }
 
     // update the request headers
-    request.headers().insert("Cookie", newValue);
+    request->headers().insert("Cookie", newValue);
 }
 
 void SessionStore::setMacSecret(const QByteArray &secret)

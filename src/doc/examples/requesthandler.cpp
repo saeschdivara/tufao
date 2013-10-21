@@ -1,7 +1,8 @@
-bool RequestHandler::handleRequest(Tufao::HttpServerRequest &request,
-                                   Tufao::HttpServerResponse &response)
+bool RequestHandler::handleRequest(Tufao::HttpServerRequest *request,
+                                   Tufao::HttpServerResponse *response,
+                                   const QStringList &args)
 {
-    response.writeHead(HttpResponseStatus::OK);
-    response.end("Hello World\n");
+    response->writeHead(200);
+    response->end("Hello World\n");
     return true;
 }

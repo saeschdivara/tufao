@@ -23,19 +23,18 @@
 #ifndef CREATEHANDLER_H
 #define CREATEHANDLER_H
 
-#include <QtCore/QObject>
 #include <Tufao/AbstractHttpServerRequestHandler>
 
-class SetHandler : public QObject,
-                   public Tufao::AbstractHttpServerRequestHandler
+class SetHandler : public Tufao::AbstractHttpServerRequestHandler
 {
     Q_OBJECT
 public:
     explicit SetHandler(QObject *parent = 0);
 
 public slots:
-    bool handleRequest(Tufao::HttpServerRequest &request,
-                       Tufao::HttpServerResponse &response) override;
+    bool handleRequest(Tufao::HttpServerRequest *request,
+                       Tufao::HttpServerResponse *response,
+                       const QStringList &args);
 };
 
 #endif // CREATEHANDLER_H

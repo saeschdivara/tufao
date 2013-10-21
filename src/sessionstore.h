@@ -238,15 +238,15 @@ public:
     /*!
      * Returns true if a session has been set the \p request.
      */
-    virtual bool hasSession(const HttpServerRequest &request) const = 0;
+    virtual bool hasSession(const HttpServerRequest *request) const = 0;
 
     /*!
      * Removes the session, if any, in the \p request.
      *
      * \par response The object used to invalidate the user's cookie.
      */
-    virtual void removeSession(const HttpServerRequest &request,
-                               HttpServerResponse &response) = 0;
+    virtual void removeSession(const HttpServerRequest *request,
+                               HttpServerResponse *response) = 0;
 
     /*!
      * This method removes all cookies matching with this store's settings from
@@ -257,15 +257,15 @@ public:
      *
      * Call this if you need to reset the session id.
      */
-    void resetSession(HttpServerRequest &request) const;
+    void resetSession(HttpServerRequest *request) const;
 
     /*!
      * Returns a list of set properties to this session.
      *
      * The session is represented by the pair \p request, \p response.
      */
-    virtual QList<QByteArray> properties(const HttpServerRequest &request,
-                                         const HttpServerResponse &response)
+    virtual QList<QByteArray> properties(const HttpServerRequest *request,
+                                         const HttpServerResponse *response)
         const = 0;
 
     /*!
@@ -273,8 +273,8 @@ public:
      *
      * The session is represented by the pair \p request, \p response.
      */
-    virtual bool hasProperty(const HttpServerRequest &request,
-                             const HttpServerResponse &response,
+    virtual bool hasProperty(const HttpServerRequest *request,
+                             const HttpServerResponse *response,
                              const QByteArray &key) const = 0;
 
     /*!
@@ -283,8 +283,8 @@ public:
      *
      * The session is represented by the pair \p request, \p response.
      */
-    virtual QVariant property(const HttpServerRequest &request,
-                              HttpServerResponse &response,
+    virtual QVariant property(const HttpServerRequest *request,
+                              HttpServerResponse *response,
                               const QByteArray &key) const = 0;
 
     /*!
@@ -292,8 +292,8 @@ public:
      *
      * The session is represented by the pair \p request, \p response.
      */
-    virtual void setProperty(const HttpServerRequest &request,
-                             HttpServerResponse &response,
+    virtual void setProperty(const HttpServerRequest *request,
+                             HttpServerResponse *response,
                              const QByteArray &key, const QVariant &value) = 0;
 
     /*!
@@ -301,8 +301,8 @@ public:
      *
      * The session is represented by the pair \p request, \p response.
      */
-    virtual void removeProperty(const HttpServerRequest &request,
-                                HttpServerResponse &response,
+    virtual void removeProperty(const HttpServerRequest *request,
+                                HttpServerResponse *response,
                                 const QByteArray &key) = 0;
 
     /*!
@@ -342,7 +342,7 @@ protected:
      * Create a new one and discard this, or you will introduce a session
      * fixation vulnerability.
      */
-    QByteArray session(const HttpServerRequest &request) const;
+    QByteArray session(const HttpServerRequest *request) const;
 
     /*!
      * Returns the value of the first cookie that is compatible with this
@@ -357,8 +357,8 @@ protected:
      * Create a new one and discard this, or you will introduce a session
      * fixation vulnerability.
      */
-    QByteArray session(const HttpServerRequest &request,
-                       const HttpServerResponse &response) const;
+    QByteArray session(const HttpServerRequest *request,
+                       const HttpServerResponse *response) const;
 
     /*!
      * Sets a cookie that matches the store's settings in the \p response
@@ -378,7 +378,7 @@ protected:
      * \sa
      * SessionSettings::cookie
      */
-    void setSession(HttpServerResponse &response, const QByteArray &session)
+    void setSession(HttpServerResponse *response, const QByteArray &session)
         const;
 
     /*!
@@ -387,7 +387,7 @@ protected:
      * This is done by setting the expiration date to the past, as specified by
      * RFC 6265.
      */
-    void unsetSession(HttpServerResponse &response) const;
+    void unsetSession(HttpServerResponse *response) const;
 
     /*!
      * This attribute represents the session's settings. It will be used in

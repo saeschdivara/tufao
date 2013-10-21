@@ -27,8 +27,7 @@ SimpleSessionStore::SimpleSessionStore(const SessionSettings &settings,
     priv(new Priv)
 {
     priv->timer.setInterval(DEFAULT_REFRESH_INTERVAL);
-    connect(&priv->timer, &QTimer::timeout,
-            this, &SimpleSessionStore::onTimer);
+    connect(&priv->timer, SIGNAL(timeout()), this, SLOT(onTimer()));
     priv->timer.start();
 }
 
@@ -47,7 +46,7 @@ void SimpleSessionStore::setRefreshInterval(int msecs)
     priv->timer.setInterval(msecs);
 }
 
-bool SimpleSessionStore::hasSession(const HttpServerRequest &request) const
+bool SimpleSessionStore::hasSession(const HttpServerRequest *request) const
 {
     QByteArray session(SessionStore::session(request));
 
@@ -64,8 +63,8 @@ bool SimpleSessionStore::hasSession(const HttpServerRequest &request) const
     return true;
 }
 
-void SimpleSessionStore::removeSession(const HttpServerRequest &request,
-                                       HttpServerResponse &response)
+void SimpleSessionStore::removeSession(const HttpServerRequest *request,
+                                       HttpServerResponse *response)
 {
     QByteArray session(SessionStore::session(request, response));
 
@@ -82,8 +81,8 @@ void SimpleSessionStore::removeSession(const HttpServerRequest &request,
 }
 
 QList<QByteArray>
-SimpleSessionStore::properties(const HttpServerRequest &request,
-                               const HttpServerResponse &response) const
+SimpleSessionStore::properties(const HttpServerRequest *request,
+                               const HttpServerResponse *response) const
 {
     QByteArray session(SessionStore::session(request, response));
 
@@ -108,8 +107,8 @@ SimpleSessionStore::properties(const HttpServerRequest &request,
     return ret;
 }
 
-bool SimpleSessionStore::hasProperty(const HttpServerRequest &request,
-                                     const HttpServerResponse &response,
+bool SimpleSessionStore::hasProperty(const HttpServerRequest *request,
+                                     const HttpServerResponse *response,
                                      const QByteArray &key) const
 {
     QByteArray session(SessionStore::session(request, response));
@@ -127,8 +126,8 @@ bool SimpleSessionStore::hasProperty(const HttpServerRequest &request,
     return priv->database[session].contains(key);
 }
 
-QVariant SimpleSessionStore::property(const HttpServerRequest &request,
-                                      HttpServerResponse &response,
+QVariant SimpleSessionStore::property(const HttpServerRequest *request,
+                                      HttpServerResponse *response,
                                       const QByteArray &key) const
 {
     QByteArray session(SessionStore::session(request, response));
@@ -165,8 +164,8 @@ QVariant SimpleSessionStore::property(const HttpServerRequest &request,
     return sessionData[key];
 }
 
-void SimpleSessionStore::setProperty(const HttpServerRequest &request,
-                                     HttpServerResponse &response,
+void SimpleSessionStore::setProperty(const HttpServerRequest *request,
+                                     HttpServerResponse *response,
                                      const QByteArray &key,
                                      const QVariant &value)
 {
@@ -187,8 +186,8 @@ void SimpleSessionStore::setProperty(const HttpServerRequest &request,
     setSession(response, session);
 }
 
-void SimpleSessionStore::removeProperty(const HttpServerRequest &request,
-                                        HttpServerResponse &response,
+void SimpleSessionStore::removeProperty(const HttpServerRequest *request,
+                                        HttpServerResponse *response,
                                         const QByteArray &key)
 {
     // init session variable
@@ -230,7 +229,11 @@ void SimpleSessionStore::onTimer()
 
 inline QByteArray SimpleSessionStore::createSession() const
 {
+#if QT_VERSION < QT_VERSION_CHECK(4, 8, 0)
+    return static_cast<QString>(QUuid::createUuid()).toUtf8();
+#else
     return QUuid::createUuid().toByteArray();
+#endif
 }
 
 } // namespace Tufao

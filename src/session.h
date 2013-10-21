@@ -160,61 +160,6 @@ public:
         return PropertyWrapper(*this, key);
     }
 
-    /*!
-      Takes a functor to access a session's property.
-
-      \param f a functor that receives a QVariant object reference as an
-      argument.
-
-      \note After the functor returns, the property is updated.
-
-      \include sessionusage2.cpp
-
-      \since
-      1.0
-    */
-    template<class F>
-    static void apply(SessionStore &store, const QByteArray &property,
-                      const HttpServerRequest &request,
-                      HttpServerResponse &response, F f)
-    {
-        QVariant v = store.property(request, response, property);
-        f(v);
-        store.setProperty(request, response, property, v);
-    }
-
-    /*!
-      Takes a functor to access the session's properties.
-
-      \param f a functor that receives a QMap<QByteArray, QVariant> object
-      reference as an argument.
-
-      \note After the functor returns, the property is updated.
-
-      \include sessionusage3.cpp
-
-      \note
-      If the session may contain a lot of properties and you aren't going to
-      access most of them, this helper function might be inefficient.
-
-      \since
-      1.0
-    */
-    template<class F>
-    static void apply(SessionStore &store, const HttpServerRequest &request,
-                      HttpServerResponse &response, F f)
-    {
-        QMap<QByteArray, QVariant> properties;
-
-        for (const auto &property: store.properties(request, response))
-            properties[property] = store.property(request, response, property);
-
-        f(properties);
-
-        for (auto i = properties.begin();i != properties.end();++i)
-            store.setProperty(request, response, i.key(), i.value());
-    }
-
 private:
     SessionStore &store;
     const HttpServerRequest &request;

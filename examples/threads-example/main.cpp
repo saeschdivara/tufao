@@ -22,25 +22,15 @@
 
 #include <QCoreApplication>
 
-#include <Tufao/HttpServerResponse>
-#include <Tufao/Headers>
-
 #include "tcpserver.h"
+#include "handlerfactory.h"
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
     TcpServer server;
 
-    server.run(4, 8080, []() {
-        return [](Tufao::HttpServerRequest &,
-                  Tufao::HttpServerResponse &response) {
-            response.writeHead(Tufao::HttpResponseStatus::OK);
-            response.headers().insert("Content-Type", "text/plain");
-            response.end("Hello World\n");
-            return true;
-        };
-    });
+    server.run(4, 8080, new HandlerFactory);
 
     return a.exec();
 }

@@ -31,7 +31,6 @@
 
 #include <QtNetwork/QAbstractSocket>
 #include <QtCore/QTimer>
-#include <QtCore/QUrl>
 
 namespace Tufao {
 
@@ -45,7 +44,8 @@ struct HttpServerRequest::Priv
     };
     Q_DECLARE_FLAGS(Signals, Signal)
 
-    Priv(Tufao::HttpServerRequest *request, QAbstractSocket &socket) :
+    Priv(Tufao::HttpServerRequest *request,
+                      QAbstractSocket *socket) :
         socket(socket),
         lastWasValue(true),
         useTrailers(false),
@@ -67,10 +67,9 @@ struct HttpServerRequest::Priv
     static int on_body(http_parser *, const char *, size_t);
     static int on_message_complete(http_parser *);
 
-    QAbstractSocket &socket;
+    QAbstractSocket *socket;
     QByteArray buffer;
     http_parser parser;
-    QByteArray urlData;
     QByteArray lastHeader;
     bool lastWasValue;
     bool useTrailers;
@@ -78,29 +77,16 @@ struct HttpServerRequest::Priv
     QByteArray body;
 
     QByteArray method;
-    QUrl url;
-    Tufao::HttpVersion httpVersion;
+    QByteArray url;
+    Tufao::HttpServerRequest::HttpVersion httpVersion;
     Headers headers;
     Headers trailers;
     Tufao::HttpServerResponse::Options responseOptions;
-    QVariant customData;
 
     int timeout;
     QTimer timer;
 
     static const http_parser_settings httpSettingsInstance;
-};
-
-struct RawData
-{
-    template<int N>
-    constexpr RawData(const char (&data)[N]) :
-        data(data),
-        size(N - 1)
-    {}
-
-    const char *data;
-    int size;
 };
 
 } // namespace Tufao

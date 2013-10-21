@@ -17,6 +17,7 @@
 */
 
 #include "priv/httpserver.h"
+#include "httpserverrequest.h"
 #include <QtNetwork/QTcpSocket>
 #include "headers.h"
 
@@ -26,8 +27,13 @@ HttpServer::HttpServer(QObject *parent) :
     QObject(parent),
     priv(new Priv)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
     connect(&priv->tcpServer, &TcpServerWrapper::newConnection,
             this, &HttpServer::onNewConnection);
+#else
+    connect(&priv->tcpServer, SIGNAL(newConnection(int)),
+            this, SLOT(onNewConnection(int)));
+#endif
 }
 
 HttpServer::~HttpServer()
@@ -60,25 +66,16 @@ int HttpServer::timeout() const
     return priv->timeout;
 }
 
-void HttpServer::setUpgradeHandler(HttpServer::UpgradeHandler functor)
-{
-    if (!functor)
-        return;
-
-    priv->upgradeHandler = functor;
-}
-
-HttpServer::UpgradeHandler HttpServer::defaultUpgradeHandler()
-{
-    return Priv::defaultUpgradeHandler;
-}
-
 void HttpServer::close()
 {
     priv->tcpServer.close();
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
 void HttpServer::incomingConnection(qintptr socketDescriptor)
+#else
+void HttpServer::incomingConnection(int socketDescriptor)
+#endif
 {
     QTcpSocket *socket = new QTcpSocket;
 
@@ -90,31 +87,38 @@ void HttpServer::incomingConnection(qintptr socketDescriptor)
     handleConnection(socket);
 }
 
-void HttpServer::checkContinue(HttpServerRequest &request,
-                               HttpServerResponse &response)
+void HttpServer::checkContinue(HttpServerRequest *request,
+                               HttpServerResponse *response)
 {
-    response.writeContinue();
+    response->writeContinue();
     emit requestReady(request, response);
 }
 
 void HttpServer::handleConnection(QAbstractSocket *socket)
 {
     socket->setParent(this);
-    HttpServerRequest *handle = new HttpServerRequest(*socket, this);
+    HttpServerRequest *handle = new HttpServerRequest(socket, this);
 
     if (priv->timeout)
         handle->setTimeout(priv->timeout);
 
-    connect(handle, &HttpServerRequest::ready,
-            this, &HttpServer::onRequestReady);
-    connect(handle, &HttpServerRequest::upgrade, this, &HttpServer::onUpgrade);
-    connect(socket, &QAbstractSocket::disconnected,
-            handle, &QObject::deleteLater);
-    connect(socket, &QAbstractSocket::disconnected,
-            socket, &QObject::deleteLater);
+    connect(handle, SIGNAL(ready()), this, SLOT(onRequestReady()));
+    connect(handle, SIGNAL(upgrade(QByteArray)),
+            this, SLOT(onUpgrade(QByteArray)));
+    connect(socket, SIGNAL(disconnected()), handle, SLOT(deleteLater()));
+    connect(socket, SIGNAL(disconnected()), socket, SLOT(deleteLater()));
 }
 
+void HttpServer::upgrade(HttpServerRequest *request, const QByteArray &)
+{
+    request->socket()->close();
+}
+
+#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
 void HttpServer::onNewConnection(qintptr socketDescriptor)
+#else
+void HttpServer::onNewConnection(int socketDescriptor)
+#endif
 {
     incomingConnection(socketDescriptor);
 }
@@ -124,27 +128,25 @@ void HttpServer::onRequestReady()
     HttpServerRequest *request = qobject_cast<HttpServerRequest *>(sender());
     Q_ASSERT(request);
 
-    QAbstractSocket &socket = request->socket();
+    QAbstractSocket *socket = request->socket();
     HttpServerResponse *response
             = new HttpServerResponse(socket, request->responseOptions(), this);
 
-    connect(&socket, &QAbstractSocket::disconnected,
-            response, &QObject::deleteLater);
-    connect(response, &HttpServerResponse::finished,
-            response, &QObject::deleteLater);
+    connect(socket, SIGNAL(disconnected()), response, SLOT(deleteLater()));
+    connect(response, SIGNAL(finished()), response, SLOT(deleteLater()));
 
     if (request->headers().contains("Expect", "100-continue"))
-        checkContinue(*request, *response);
+        checkContinue(request, response);
     else
-        emit requestReady(*request, *response);
+        emit requestReady(request, response);
 }
 
-void HttpServer::onUpgrade()
+void HttpServer::onUpgrade(const QByteArray &head)
 {
     HttpServerRequest *request = qobject_cast<HttpServerRequest *>(sender());
     Q_ASSERT(request);
 
-    priv->upgradeHandler(*request, request->readBody());
+    upgrade(request, head);
     delete request;
 }
 

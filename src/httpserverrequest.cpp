@@ -12,8 +12,8 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     Lesser General Public License for more details.
 
-    You should have received a copy of the GNU Lesser General Public License
-    along with this library.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "priv/httpserverrequest.h"
@@ -23,12 +23,15 @@ namespace Tufao {
 const http_parser_settings HttpServerRequest::Priv::httpSettingsInstance
 = HttpServerRequest::Priv::httpSettings();
 
-HttpServerRequest::HttpServerRequest(QAbstractSocket &socket, QObject *parent) :
+HttpServerRequest::HttpServerRequest(QAbstractSocket *socket, QObject *parent) :
     QObject(parent),
     priv(new Priv(this, socket))
 {
-    connect(&socket, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
-    connect(&socket, SIGNAL(disconnected()), this, SIGNAL(close()));
+    if (!socket)
+        return;
+
+    connect(socket, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
+    connect(socket, SIGNAL(disconnected()), this, SIGNAL(close()));
 
     connect(&priv->timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
     if (priv->timeout)
@@ -45,12 +48,7 @@ QByteArray HttpServerRequest::method() const
     return priv->method;
 }
 
-void HttpServerRequest::setUrl(const QUrl &url)
-{
-    priv->url = url;
-}
-
-QUrl HttpServerRequest::url() const
+QByteArray HttpServerRequest::url() const
 {
     return priv->url;
 }
@@ -65,24 +63,22 @@ Headers &HttpServerRequest::headers()
     return priv->headers;
 }
 
+QByteArray HttpServerRequest::body() const
+{
+    return priv->body;
+}
+
 Headers HttpServerRequest::trailers() const
 {
     return priv->trailers;
 }
 
-HttpVersion HttpServerRequest::httpVersion() const
+HttpServerRequest::HttpVersion HttpServerRequest::httpVersion() const
 {
     return priv->httpVersion;
 }
 
-QByteArray HttpServerRequest::readBody()
-{
-    QByteArray body;
-    body.swap(priv->body);
-    return body;
-}
-
-QAbstractSocket &HttpServerRequest::socket() const
+QAbstractSocket *HttpServerRequest::socket() const
 {
     return priv->socket;
 }
@@ -107,42 +103,34 @@ HttpServerResponse::Options HttpServerRequest::responseOptions() const
     return priv->responseOptions;
 }
 
-QVariant HttpServerRequest::customData() const
-{
-    return priv->customData;
-}
-
-void HttpServerRequest::setCustomData(const QVariant &data)
-{
-    priv->customData = data;
-}
-
 void HttpServerRequest::onReadyRead()
 {
     if (priv->timeout)
         priv->timer.start(priv->timeout);
 
-    priv->buffer += priv->socket.readAll();
+    priv->buffer += priv->socket->readAll();
     size_t nparsed = http_parser_execute(&priv->parser,
                                          &Priv::httpSettingsInstance,
                                          priv->buffer.constData(),
                                          priv->buffer.size());
 
     if (priv->parser.http_errno) {
-        priv->socket.close();
+        priv->socket->close();
         return;
     }
 
     if (priv->whatEmit.testFlag(Priv::READY)) {
         priv->whatEmit &= ~Priv::Signals(Priv::READY);
-        this->disconnect(SIGNAL(data()));
-        this->disconnect(SIGNAL(end()));
+        // TODO: remove on version 1.0
+        emit ready(priv->responseOptions);
         emit ready();
     }
 
     if (priv->whatEmit.testFlag(Priv::DATA)) {
         priv->whatEmit &= ~Priv::Signals(Priv::DATA);
-        emit data();
+        QByteArray body(priv->body);
+        priv->body.clear();
+        emit data(body);
     }
 
     priv->buffer.remove(0, nparsed);
@@ -154,26 +142,25 @@ void HttpServerRequest::onReadyRead()
     }
 
     if (priv->parser.upgrade) {
-        disconnect(&priv->socket, SIGNAL(readyRead()),
+        disconnect(priv->socket, SIGNAL(readyRead()),
                    this, SLOT(onReadyRead()));
-        disconnect(&priv->socket, SIGNAL(disconnected()),
-                   this, SIGNAL(close()));
+        disconnect(priv->socket, SIGNAL(disconnected()), this, SIGNAL(close()));
         disconnect(&priv->timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
 
-        priv->body.swap(priv->buffer);
-        emit upgrade();
+        QByteArray b(priv->buffer);
+        clearBuffer();
+        emit upgrade(b);
     }
 }
 
 void HttpServerRequest::onTimeout()
 {
-    priv->socket.close();
+    priv->socket->close();
 }
 
 inline void HttpServerRequest::clearBuffer()
 {
     priv->buffer.clear();
-    priv->urlData.clear();
     priv->lastHeader.clear();
     priv->lastWasValue = true;
     priv->useTrailers = false;
@@ -184,9 +171,7 @@ inline void HttpServerRequest::clearRequest()
     priv->method.clear();
     priv->url.clear();
     priv->headers.clear();
-    priv->body.clear();
     priv->trailers.clear();
-    priv->customData.clear();
 }
 
 http_parser_settings HttpServerRequest::Priv::httpSettings()
@@ -222,7 +207,7 @@ int HttpServerRequest::Priv::on_url(http_parser *parser, const char *at,
     Tufao::HttpServerRequest *request = static_cast<Tufao::HttpServerRequest *>
             (parser->data);
     Q_ASSERT(request);
-    request->priv->urlData.append(at, length);
+    request->priv->url.append(at, length);
     return 0;
 }
 
@@ -280,46 +265,48 @@ int HttpServerRequest::Priv::on_headers_complete(http_parser *parser)
             (parser->data);
     Q_ASSERT(request);
 
-    request->priv->url = request->priv->urlData;
-    request->priv->urlData.clear();
-
     request->priv->lastHeader.clear();
     request->priv->lastWasValue = true;
     request->priv->useTrailers = true;
 
     {
-        typedef RawData MT;
-        static const MT methods[] {
-            MT{"DELETE"},
-            MT{"GET"},
-            MT{"HEAD"},
-            MT{"POST"},
-            MT{"PUT"},
-            MT{"CONNECT"},
-            MT{"OPTIONS"},
-            MT{"TRACE"},
-            MT{"COPY"},
-            MT{"LOCK"},
-            MT{"MKCOL"},
-            MT{"MOVE"},
-            MT{"PROPFIND"},
-            MT{"PROPPATCH"},
-            MT{"SEARCH"},
-            MT{"UNLOCK"},
-            MT{"REPORT"},
-            MT{"MKACTIVITY"},
-            MT{"CHECKOUT"},
-            MT{"MERGE"},
-            MT{"M-SEARCH"},
-            MT{"NOTIFY"},
-            MT{"SUBSCRIBE"},
-            MT{"UNSUBSCRIBE"},
-            MT{"PATCH"},
-            MT{"PURGE"}
+#define M(str) {(str), (sizeof(str) - 1)}
+        static const struct {
+            char str[12];
+            int size;
+        } methods[] =
+        {
+            M("DELETE"),
+            M("GET"),
+            M("HEAD"),
+            M("POST"),
+            M("PUT"),
+            M("CONNECT"),
+            M("OPTIONS"),
+            M("TRACE"),
+            M("COPY"),
+            M("LOCK"),
+            M("MKCOL"),
+            M("MOVE"),
+            M("PROPFIND"),
+            M("PROPPATCH"),
+            M("SEARCH"),
+            M("UNLOCK"),
+            M("REPORT"),
+            M("MKACTIVITY"),
+            M("CHECKOUT"),
+            M("MERGE"),
+            M("M-SEARCH"),
+            M("NOTIFY"),
+            M("SUBSCRIBE"),
+            M("UNSUBSCRIBE"),
+            M("PATCH"),
+            M("PURGE")
         };
+#undef M
 
-        const auto &m = methods[parser->method];
-        request->priv->method.setRawData(m.data, m.size);
+        request->priv->method.setRawData(methods[parser->method].str,
+                                         methods[parser->method].size);
     }
 
     {
@@ -332,21 +319,22 @@ int HttpServerRequest::Priv::on_headers_complete(http_parser *parser)
         case 1:
             switch (parser->http_minor) {
             case 0:
-                request->priv->httpVersion = HttpVersion::HTTP_1_0;
+                request->priv->httpVersion = Tufao::HttpServerRequest::HTTP_1_0;
                 break;
             case 1:
-                request->priv->httpVersion = HttpVersion::HTTP_1_1;
+                request->priv->httpVersion = Tufao::HttpServerRequest::HTTP_1_1;
                 break;
             default:
-                request->priv->socket.write(errorMessage,
-                                            sizeof(errorMessage) - 1);
+                request->priv->socket->write(errorMessage,
+                                             sizeof(errorMessage) - 1);
                 request->clearBuffer();
                 request->clearRequest();
                 return -1;
             }
             break;
         default:
-            request->priv->socket.write(errorMessage, sizeof(errorMessage) - 1);
+            request->priv->socket->write(errorMessage,
+                                         sizeof(errorMessage) - 1);
             request->clearBuffer();
             request->clearRequest();
             return -1;

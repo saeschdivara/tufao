@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012, 2013 Vinícius dos Santos Oliveira
+  Copyright (c) 2012 Vinícius dos Santos Oliveira
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -25,37 +25,35 @@
 #include <Tufao/SimpleSessionStore>
 #include <Tufao/Session>
 
-#include <QtCore/QStringList>
-
 UnsetHandler::UnsetHandler(QObject *parent) :
-    QObject(parent)
+    Tufao::AbstractHttpServerRequestHandler(parent)
 {
 }
 
-bool UnsetHandler::handleRequest(Tufao::HttpServerRequest &request,
-                                 Tufao::HttpServerResponse &response)
+bool UnsetHandler::handleRequest(Tufao::HttpServerRequest *request,
+                                 Tufao::HttpServerResponse *response,
+                                 const QStringList &args)
 {
     Tufao::SimpleSessionStore &store(Tufao::SimpleSessionStore
                                      ::defaultInstance());
-    Tufao::Session session(store, request, response);
+    Tufao::Session session(store, *request, *response);
 
-    QStringList args = request.customData().toMap()["args"].toStringList();
     const QByteArray property(args.isEmpty()
                               ? QByteArray()
-                              : args[1].toUtf8());
+                              : args.front().toUtf8());
 
     if (property.isEmpty())
         return false;
 
-    response.writeHead(Tufao::HttpResponseStatus::OK);
+    response->writeHead(Tufao::HttpServerResponse::OK);
 
     if (!session[property]) {
-        response.end("Property \"" + property + "\" doesn't exist");
+        response->end("Property \"" + property + "\" doesn't exist");
         return true;
     }
 
-    store.removeProperty(request, response, property);
+    store.removeProperty(*request, *response, property);
 
-    response.end("store.removeProperty(\"" + property + "\")");
+    response->end("store.removeProperty(\"" + property + "\")");
     return true;
 }

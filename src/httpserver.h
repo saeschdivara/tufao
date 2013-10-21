@@ -23,7 +23,6 @@
 #ifndef TUFAO_SERVER_H
 #define TUFAO_SERVER_H
 
-#include <functional>
 #include <QtNetwork/QTcpServer>
 #include "tufao_global.h"
 
@@ -55,19 +54,6 @@ class TUFAO_EXPORT HttpServer : public QObject
 {
     Q_OBJECT
 public:
-    /*!
-      A typedef to http upgrade request handler.
-
-      \sa
-      AbstractHttpUpgradeHandler
-      setUpgradeHandler
-
-      \since
-      1.0
-     */
-    typedef std::function<void(HttpServerRequest &request, const QByteArray&)>
-        UpgradeHandler;
-
     /*!
       Constructs a Tufao::HttpServer object.
 
@@ -131,37 +117,6 @@ public:
       */
     int timeout() const;
 
-    /*!
-      This method sets the handler that will be called to handle http upgrade
-      requests.
-
-      \note
-      The connection object associated with request parameter
-      (Tufao::HttpServerRequest::socket) will be deleted when disconnected. If
-      you need to delete it sooner, just call QIODevice::close or
-      QObject::deleteLater. \n \n
-
-      \note
-      If you pass an empty std::function object, this function does nothing.
-
-      \sa
-      defaultUpgradeHandler
-
-      \since
-      1.0
-     */
-    void setUpgradeHandler(UpgradeHandler functor);
-
-    /*!
-      Returns the default http upgrade request's handler.
-
-      The default handler closes the connection.
-
-      \since
-      1.0
-     */
-    static UpgradeHandler defaultUpgradeHandler();
-
 signals:
     /*!
       This signal is emitted each time there is request.
@@ -184,12 +139,9 @@ signals:
       \param request An instance of Tufao::HttpServerRequest
 
       \param response An instance of Tufao::HttpServerResponse
-
-      \since
-      1.0
       */
-    void requestReady(Tufao::HttpServerRequest &request,
-                      Tufao::HttpServerResponse &response);
+    void requestReady(Tufao::HttpServerRequest *request,
+                      Tufao::HttpServerResponse *response);
 
 public slots:
     /*!
@@ -218,7 +170,11 @@ protected:
       Reimplement this function to alter the server's behavior when a connection
       is available.
       */
+#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
     virtual void incomingConnection(qintptr socketDescriptor);
+#else
+    virtual void incomingConnection(int socketDescriptor);
+#endif
 
     /*!
       This virtual function is called by HttpServer when a client do a request
@@ -234,17 +190,38 @@ protected:
       Don't delete the request or the response object, they will be deleted when
       the connection closes. If you need delete them before, just close the
       connection or call the QObject::deleteLater.
-
-      \since
-      1.0
       */
-    virtual void checkContinue(HttpServerRequest &request,
-                               HttpServerResponse &response);
+    virtual void checkContinue(HttpServerRequest *request,
+                               HttpServerResponse *response);
+
+    /*!
+      This virtual function is called by HttpServer when a client requests a
+      http upgrade.
+
+      The base implementation closes the connection.
+
+      Reimplement this function to alter the server's behavior when a http
+      upgrade is requested.
+
+      \note
+      After this function returns, the \p request object is deleted.
+
+      \note
+      The connection object associated with \p request
+      (Tufao::HttpServerRequest::socket) will be deleted when disconnected. If
+      you need to delete it sooner, just call QIODevice::close or
+      QObject::deleteLater.
+      */
+    virtual void upgrade(HttpServerRequest *request, const QByteArray &head);
 
 private slots:
+#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
     void onNewConnection(qintptr socketDescriptor);
+#else
+    void onNewConnection(int socketDescriptor);
+#endif
     void onRequestReady();
-    void onUpgrade();
+    void onUpgrade(const QByteArray &head);
 
 private:
     struct Priv;

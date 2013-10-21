@@ -23,30 +23,34 @@
 #ifndef TUFAO_HTTPSERVERREQUESTROUTER_H
 #define TUFAO_HTTPSERVERREQUESTROUTER_H
 
-#include <functional>
-#include <initializer_list>
-
-#include <QtCore/QRegularExpression>
-#include <QtCore/QObject>
-
 #include "abstracthttpserverrequesthandler.h"
 
 namespace Tufao {
 
 /*!
   This class provides a robust and high performance HTTP request router. It
-  allows register a chain of request handlers. This router uses mapping rules
-  based on the url's path component and http method to determine the correct
-  handlers.
+  allows register AbstractHttpServerRequestHandler objects to handle requests
+  that matches the mapping rules. The mapping rules are limited to use regular
+  expressions to filter the url path component and, optionally, specify which
+  method the object can handle.
 
   The type of mapping rules used in this class provides a predictable behaviour
   that is simple to understand and allow the use of caching algorithms to
   improve the performance.
 
-  When the router finds one matching request handler, it will call it passing
-  the request and response objects. If the found handler cannot handle the
-  request (this is indicated by the return value), the router will continue its
-  quest in the search of a worthy handler. If the router fails in its quest
+  Did you note that HttpServerRequestRouter is a subclass of
+  AbstractHttpServerRequestHandler? This design choice allows you to nest
+  routes. But the nicest thing (for you) may not be the nested routing
+  possibility, but the interface that this class is implementing. This design
+  allows you to use the same request routing object to handle the requests
+  coming from a HttpServer and a HttpsServer objects (or how many of them you
+  need).
+
+  When the router finds one matching request handler, it will call its
+  handleRequest method passing the request and response objects and also the
+  captured texts by the regular expression. If the found handler cannot handle
+  the request (this is indicated by the return value), the router will continue
+  its quest in the search of a worthy handler. If the router fails in its quest
   (when no handlers are found or when none of the found handlers are able to
   respond the request), the handleRequest method in the router returns false and
   the connection remains open. This mean that you should always create a handler
@@ -60,87 +64,15 @@ namespace Tufao {
   \since
   0.3
   */
-class TUFAO_EXPORT HttpServerRequestRouter: public QObject,
-                                            public AbstractHttpServerRequestHandler
+class TUFAO_EXPORT HttpServerRequestRouter:
+        public AbstractHttpServerRequestHandler
 {
     Q_OBJECT
 public:
     /*!
-     It's a simple typedef for the type of handler accepted by the
-     HttpServerRequestRouter.
-
-     \since
-     1.0
-     */
-    typedef std::function<bool(HttpServerRequest&, HttpServerResponse&)>
-    Handler;
-
-    /*!
-      This class describes a request handler and a filter.
-
-      The filter is very basic and only can select requests based on the url's
-      path component and, optionally, the http method.
-
-      The handlers return a boolean indicating whether it's able to handle the
-      request. You can use this return value to overcome the simplistic nature
-      of the provided filter or to respond requests partially (like fill headers
-      that must be present in every response).
-
-      \since
-      1.0
-     */
-    struct Mapping
-    {
-        /*!
-          Constructs a Mapping object using \p path as filter and \p handler as
-          handler.
-         */
-        Mapping(QRegularExpression path, Handler handler) :
-            path(path), handler(handler)
-        {}
-        /*!
-          Constructs a Mapping object using \p path and \p method as filters and
-          \p handler as handler.
-         */
-        Mapping(QRegularExpression path, QByteArray method, Handler handler) :
-            path(path), method(method), handler(handler)
-        {}
-
-        /*!
-          Constructs an empty Mapping object.
-         */
-        Mapping() = default;
-
-        /*!
-          This attribute is used to filter requests based on the url's path
-          component. It's a regular expression, so you have powerful control.
-         */
-        QRegularExpression path;
-
-        /*!
-          This attribute is used to filter requests based on the HTTP method.
-          The filter should work by simply comparing strings.
-
-          \note
-          If this attribute is left null, it won't be used by the filter.
-         */
-        QByteArray method;
-        Handler handler;
-    };
-
-    /*!
       Constructs a HttpServerRequestRouter object.
       */
     explicit HttpServerRequestRouter(QObject *parent = 0);
-
-    /*!
-      Constructs a HttpServerRequestRouter object initialized with \p mappings.
-
-      \since
-      1.0
-      */
-    explicit HttpServerRequestRouter(std::initializer_list<Mapping> mappings,
-                                     QObject *parent = 0);
 
     /*!
       Destroys the object.
@@ -148,34 +80,62 @@ public:
     ~HttpServerRequestRouter();
 
     /*!
-      Chain \p map to the list of handlers available to handle requests.
+      This method maps requests which path components in the url matches the
+      regular expression \p path to the given \p handler.
 
       \return
-      The index of the new mapping.
-
-      \since
-      1.0
-     */
-    int map(Mapping map);
+      Returns itself, so you can create several mappings in the same line of
+      code.
+      */
+    HttpServerRequestRouter &map(const QRegExp &path,
+                                 AbstractHttpServerRequestHandler *handler);
 
     /*!
-      Chain \p map to the list of handlers available to handle requests.
+      This method maps requests which path components in the url matches the
+      regular expression \p path and uses the HTTP verb \p method to the given
+      \p handler.
+
+      \note
+      The router gives priority to maps that specified a method over the ones
+      that didn't.
 
       \return
-      The index of the first element in the new mapping range.
-
-      \since
-      1.0
-     */
-    int map(std::initializer_list<Mapping> map);
+      Returns itself, so you can create several mappings in the same line of
+      code.
+      */
+    HttpServerRequestRouter &map(const QRegExp &path, const QByteArray &method,
+                                 AbstractHttpServerRequestHandler *handler);
 
     /*!
-      Removes the mapping at \p index.
+      Removes all mappings that correspond to \p path and \p handler rules and
+      aren't specific to a particular HTTP method.
+      */
+    HttpServerRequestRouter &unmap(const QRegExp &path,
+                                   AbstractHttpServerRequestHandler *handler);
 
-      \since
-      1.0
-     */
-    void unmap(int index);
+    /*!
+      Removes all mappings that correspond to \p path, \p method and \p handler
+      rules.
+      */
+    HttpServerRequestRouter &unmap(const QRegExp &path,
+                                   const QByteArray &method,
+                                   AbstractHttpServerRequestHandler *handler);
+
+    /*!
+      Removes all mappings that correspond to \p path rule.
+      */
+    HttpServerRequestRouter &unmap(const QRegExp &path);
+
+    /*!
+      Removes all mappings that correspond to \p path and \p method rules.
+      */
+    HttpServerRequestRouter &unmap(const QRegExp &path,
+                                   const QByteArray &method);
+
+    /*!
+      Removes all mappings that correspond to \p handler rule.
+      */
+    HttpServerRequestRouter &unmap(AbstractHttpServerRequestHandler *handler);
 
     /*!
       Removes all mappings.
@@ -184,40 +144,19 @@ public:
 
 public slots:
     /*!
-      It will route the request to the right handler.
+      It will route the request to the right handler. To route the request,
+      it'll percent decode the path component from the url.
 
-      The handler will have access to the list of captured texts by the regular
-      expression using HttpServerRequest::customData.
-
-      \note
-      The router won't touch the HttpServerRequest::customData if the regex
-      don't capture any text.
-
-      See example below:
-
-      \include custom_data.cpp
-
-      If there is already an object set for this request, the router will do the
-      following steps:
-
-      1. If the object is not a QVariantMap, override it
-      2. If the object already has a item with the key "args", but the value is
-         not a QStringList, override the item
-      3. Append the list of captured texts in the object["args"]
-
-      \note
-      The request's custom data is copied at the beginning and is used to
-      restore the custom data state before call every handler. The state will
-      also be restored if no handlers are capable of handle the request.
+      The \p args object is prepend in the list of captured texts by the regular
+      expression and then passed to the handler. My advice is to don't overuse
+      this feature or you will get a code difficult to understand.
 
       \return
       Returns true if one handler able to respond the request is found.
-
-      \since
-      1.0
       */
-    bool handleRequest(Tufao::HttpServerRequest &request,
-                       Tufao::HttpServerResponse &response) override;
+    bool handleRequest(Tufao::HttpServerRequest *request,
+                       Tufao::HttpServerResponse *response,
+                       const QStringList &args = QStringList());
 
 private:
     struct Priv;

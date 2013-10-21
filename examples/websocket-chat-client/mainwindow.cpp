@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QtNetwork/QHostAddress>
-#include <QtWidgets/QLabel>
+#include <QtGui/QLabel>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),

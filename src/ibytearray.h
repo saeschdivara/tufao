@@ -29,21 +29,8 @@
 namespace Tufao {
 
 /*!
-  This class provides a case insensitive QByteArray. It inherits from QByteArray
-  and provides non-member functions to overload the common operators:
-    - operator !=
-    - operator <
-    - operator <=
-    - operator ==
-    - operator >
-    - operator >=
+  This class provides a case insensitive QByteArray.
 
-  \note
-  Use of overloaded operator '<' is intentionally ambiguous when you combine
-  IByteArray and const char *. This design forces you to make your intent
-  explicit using explicit casts.
-
-  \par
   \note
   All member functions of this class are inlined and should add the minimum (if
   any) of overhead.
@@ -56,8 +43,23 @@ public:
     IByteArray(const char *str);
     IByteArray(const char *data, int size);
     IByteArray(int size, char ch);
+    operator QByteArray() const;
 
+    bool operator !=(const IByteArray &ba) const;
+    bool operator <(const IByteArray &ba) const;
+    bool operator <=(const IByteArray &ba) const;
+    IByteArray &operator =(const IByteArray &ba);
+    bool operator == (const IByteArray &ba) const;
+    bool operator >(const IByteArray &ba) const;
+    bool operator >=(const IByteArray &ba) const;
+
+    bool operator !=(const QByteArray &ba) const;
+    bool operator <(const QByteArray &ba) const;
+    bool operator <=(const QByteArray &ba) const;
     IByteArray &operator =(const QByteArray &ba);
+    bool operator == (const QByteArray &ba) const;
+    bool operator >(const QByteArray &ba) const;
+    bool operator >=(const QByteArray &ba) const;
 };
 
 inline IByteArray::IByteArray()
@@ -79,47 +81,81 @@ inline IByteArray::IByteArray(int size, char ch) :
     QByteArray(size, ch)
 {}
 
+inline IByteArray::operator QByteArray() const
+{
+    return QByteArray(*this);
+}
+
+inline bool IByteArray::operator !=(const IByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) != 0;
+}
+
+inline bool IByteArray::operator <(const IByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) < 0;
+}
+
+inline bool IByteArray::operator <=(const IByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) <= 0;
+}
+
+inline IByteArray &IByteArray::operator =(const IByteArray &ba)
+{
+    static_cast<QByteArray&>(*this) = ba;
+    return *this;
+}
+
+inline bool IByteArray::operator ==(const IByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) == 0;
+}
+
+inline bool IByteArray::operator >(const IByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) > 0;
+}
+
+inline bool IByteArray::operator >=(const IByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) >= 0;
+}
+
+inline bool IByteArray::operator !=(const QByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) != 0;
+}
+
+inline bool IByteArray::operator <(const QByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) < 0;
+}
+
+inline bool IByteArray::operator <=(const QByteArray &ba) const
+{
+    return qstricmp(constData(), ba.constData()) <= 0;
+}
+
 inline IByteArray &IByteArray::operator =(const QByteArray &ba)
 {
     static_cast<QByteArray&>(*this) = ba;
     return *this;
 }
 
-// Non-member functions:
-
-inline bool operator !=(const IByteArray &lhs, const IByteArray &rhs)
+inline bool IByteArray::operator ==(const QByteArray &ba) const
 {
-    return qstricmp(lhs.constData(), rhs.constData()) != 0;
+    return qstricmp(constData(), ba.constData()) == 0;
 }
 
-inline bool operator <(const IByteArray &lhs, const IByteArray &rhs)
+inline bool IByteArray::operator >(const QByteArray &ba) const
 {
-    return qstricmp(lhs.constData(), rhs.constData()) < 0;
+    return qstricmp(constData(), ba.constData()) > 0;
 }
 
-inline bool operator <=(const IByteArray &lhs, const IByteArray &rhs)
+inline bool IByteArray::operator >=(const QByteArray &ba) const
 {
-    return qstricmp(lhs.constData(), rhs.constData()) <= 0;
-}
-
-inline bool operator ==(const IByteArray &lhs, const IByteArray &rhs)
-{
-    return qstricmp(lhs.constData(), rhs.constData()) == 0;
-}
-
-inline bool operator >(const IByteArray &lhs, const IByteArray &rhs)
-{
-    return qstricmp(lhs.constData(), rhs.constData()) > 0;
-}
-
-inline bool operator >=(const IByteArray &lhs, const IByteArray &rhs)
-{
-    return qstricmp(lhs.constData(), rhs.constData()) >= 0;
-}
-
-inline uint qHash(const IByteArray &key)
-{
-    return qHash(key.toLower());
+    return qstricmp(constData(), ba.constData()) >= 0;
 }
 
 } // namespace Tufao

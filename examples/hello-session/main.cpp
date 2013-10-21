@@ -30,8 +30,8 @@ int main(int argc, char *argv[])
     Tufao::HttpServer server;
     MainHandler h;
 
-    QObject::connect(&server, &Tufao::HttpServer::requestReady,
-                     &h, &MainHandler::handleRequest);
+    QObject::connect(&server, SIGNAL(requestReady(Tufao::HttpServerRequest*,Tufao::HttpServerResponse*)),
+                     &h, SLOT(handleRequest(Tufao::HttpServerRequest*,Tufao::HttpServerResponse*)));
 
     server.listen(QHostAddress::Any, 8080);
 

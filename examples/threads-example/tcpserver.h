@@ -23,36 +23,27 @@
 #ifndef TCPSERVER_H
 #define TCPSERVER_H
 
-#include <functional>
-
 #include <QTcpServer>
 #include <QVector>
 
-class Worker;
+#include <Tufao/AbstractHttpServerRequestHandlerFactory>
 
-namespace Tufao {
-class HttpServerRequest;
-class HttpServerResponse;
-} // namespace Tufao
+class Worker;
 
 class TcpServer : public QTcpServer
 {
     Q_OBJECT
 public:
-    typedef std::function<void(Tufao::HttpServerRequest&,
-                               Tufao::HttpServerResponse&)> Handler;
-    typedef std::function<Handler()> Factory;
-
     explicit TcpServer(QObject *parent = 0);
 
-    void run(int threadsNumber, int port, Factory factory);
+    void run(int threadsNumber, int port,
+             Tufao::AbstractHttpServerRequestHandlerFactory *handlerFactory);
 
 signals:
-    void initReady();
     void newConnection(int socketDescriptor);
 
 protected:
-    void incomingConnection(qintptr handle);
+    void incomingConnection(int handle);
 
 private:
     QVector<Worker*> workers;

@@ -19,66 +19,77 @@
 #ifndef TUFAO_PRIV_ASCTIME_H
 #define TUFAO_PRIV_ASCTIME_H
 
-#include <QtCore/QRegularExpression>
-#include <QtCore/QRegularExpressionMatch>
+#include <QtCore/QRegExp>
 #include <QtCore/QDateTime>
-#include <QtCore/QStringList>
 
 namespace Tufao {
 
-class Q_DECL_EXPORT Asctime
+class Asctime
 {
 public:
-    Asctime(const QString &headerValue);
+    Asctime(const QByteArray &headerValue);
 
-    explicit operator bool();
+    operator bool();
 
     QDateTime operator ()();
 
 private:
-    static const QRegularExpression asctime;
-    static const QStringList months;
+    static const QRegExp asctime;
 
-    QDateTime dateTime;
-    bool valid;
+    const QByteArray &headerValue;
+    QRegExp regexp;
 };
 
-inline Asctime::Asctime(const QString &headerValue) :
-    valid(true)
-{
-    QRegularExpressionMatch match{asctime.match(headerValue)};
-    if (!match.hasMatch()) {
-        valid = false;
-        return;
-    }
-
-    int month = months.indexOf(match.captured(1));
-    if (month == -1) {
-        valid = false;
-        return;
-    } else {
-        ++month;
-    }
-
-    int day = match.captured(2).toInt();
-    int hours = match.captured(3).toInt();
-    int minutes = match.captured(4).toInt();
-    int seconds = match.captured(5).toInt();
-    int year = match.captured(6).toInt();
-
-    dateTime = QDateTime(QDate(year, month, day),
-                         QTime(hours, minutes, seconds),
-                         Qt::UTC);
-}
+inline Asctime::Asctime(const QByteArray &headerValue) :
+    headerValue(headerValue),
+    regexp(asctime)
+{}
 
 inline Asctime::operator bool()
 {
-    return valid;
+    return regexp.indexIn(headerValue) != -1;
 }
 
 inline QDateTime Asctime::operator ()()
 {
-    return dateTime;
+    if (!regexp.captureCount())
+        return QDateTime();
+
+    int year = regexp.cap(6).toInt(), month = 1,
+            day = regexp.cap(2).toInt();
+    {
+        QString monthStr(regexp.cap(1));
+        if (monthStr == "Jan")
+            month = 1;
+        else if (monthStr == "Feb")
+            month = 2;
+        else if (monthStr == "Mar")
+            month = 3;
+        else if (monthStr == "Apr")
+            month = 4;
+        else if (monthStr == "May")
+            month = 5;
+        else if (monthStr == "Jun")
+            month = 6;
+        else if (monthStr == "Jul")
+            month = 7;
+        else if (monthStr == "Aug")
+            month = 8;
+        else if (monthStr == "Sep")
+            month = 9;
+        else if (monthStr == "Oct")
+            month = 10;
+        else if (monthStr == "Nov")
+            month = 11;
+        else if (monthStr == "Dec")
+            month = 12;
+    }
+
+    int hours = regexp.cap(3).toInt(), minutes = regexp.cap(4).toInt(),
+            seconds = regexp.cap(5).toInt();
+
+    return QDateTime(QDate(year, month, day), QTime(hours, minutes, seconds),
+                     Qt::UTC);
 }
 
 } // namespace Tufao

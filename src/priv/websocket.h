@@ -25,11 +25,6 @@
 #include <QtNetwork/QAbstractSocket>
 #include <QtCore/QtEndian>
 
-#if defined(NO_ERROR) && defined(_WIN32)
-# define TUFAO_WINERROR_WORKAROUND
-# undef NO_ERROR
-#endif
-
 namespace Tufao {
 
 struct HttpClientSettings;
@@ -288,8 +283,8 @@ struct WebSocket::Priv
     };
 
     Priv() :
-        messageType(WebSocketMessageType::BINARY_MESSAGE),
-        lastError(WebSocketError::NO_ERROR),
+        messageType(Tufao::WebSocket::BINARY_MESSAGE),
+        lastError(Tufao::WebSocket::NO_ERROR),
         state(CLOSED),
         parsingState(PARSING_FRAME),
         clientNode(NULL)
@@ -301,8 +296,8 @@ struct WebSocket::Priv
             delete clientNode;
     }
 
-    WebSocketMessageType messageType;
-    WebSocketError lastError;
+    Tufao::WebSocket::MessageType messageType;
+    Tufao::WebSocket::Error lastError;
 
     QAbstractSocket *socket;
     QByteArray buffer;
@@ -338,10 +333,5 @@ inline bool hasValueCaseInsensitively(const QList<QByteArray> &values,
 }
 
 } // namespace Tufao
-
-#if defined(TUFAO_WINERROR_WORKAROUND)
-# define NO_ERROR 0L
-# undef TUFAO_WINERROR_WORKAROUND
-#endif
 
 #endif // TUFAO_PRIV_WEBSOCKET_H

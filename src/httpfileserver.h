@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012, 2013 Vinícius dos Santos Oliveira
+  Copyright (c) 2012 Vinícius dos Santos Oliveira
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -46,19 +46,19 @@ namespace Tufao {
     - If-Unmodified-Since
     - If-Range
     - Range
-    - Content-Type through QMimeDatabase (_Since version 1.0_)
 
   It won't handle:
     - ETag (If-Match and If-None-Match headers)
     - Cache-Control response header: Useful for set cache max age
     - Content-Disposition response header
     - Content-MD5 response header
+    - Content-Type response header. This header is used to inform the mime type
+      of the file to the client.
 
   \since
   0.3
   */
-class TUFAO_EXPORT HttpFileServer: public QObject,
-                                   public AbstractHttpServerRequestHandler
+class TUFAO_EXPORT HttpFileServer: public AbstractHttpServerRequestHandler
 {
     Q_OBJECT
 public:
@@ -91,23 +91,17 @@ public:
 
     /*!
       Analyze the \p request and serve the file pointed by \p filename.
-
-      \since
-      1.0
       */
-    static void serveFile(const QString &fileName, HttpServerRequest &request,
-                          HttpServerResponse &response);
+    static void serveFile(const QString &fileName, HttpServerRequest *request,
+                          HttpServerResponse *response);
 
     /*!
       This member function doesn't serve any file, just set the response body to
       the contents in the file pointed by \p filename. It's useful in some
       scenarios, like serving 404-pages.
-
-      \since
-      1.0
       */
-    static bool serveFile(const QString &fileName, HttpServerResponse &response,
-                          HttpResponseStatus statusCode);
+    static bool serveFile(const QString &fileName, HttpServerResponse *response,
+                          int statusCode);
 
     /*!
       Return the buffer size used.
@@ -129,19 +123,6 @@ public:
       */
     static void setBufferSize(qint64 size);
 
-    /*!
-      Returns a handler that don't depends on another object. The purpose of
-      this alternative handler is to free you of the worry of maintain the
-      HttpFileServer's object (lifetime) while the functor object is being used.
-
-      \param rootDir The root dir to serve files.
-
-      \since
-      1.0
-     */
-    static std::function<bool(HttpServerRequest&, HttpServerResponse&)>
-    handler(const QString &rootDir);
-
 public slots:
     /*!
       It searchs for the file requested in the root dir and respond to the
@@ -150,18 +131,12 @@ public slots:
       \note
       This method won't let requests access files outside the root dir folder
       and should be prefered over self-made implementations, as its safer.
-
-      \since
-      1.0
       */
-    bool handleRequest(Tufao::HttpServerRequest &request,
-                       Tufao::HttpServerResponse &response) override;
+    bool handleRequest(Tufao::HttpServerRequest *request,
+                       Tufao::HttpServerResponse *response,
+                       const QStringList & = QStringList());
 
 private:
-    static bool handleRequest(HttpServerRequest &request,
-                              HttpServerResponse &response,
-                              const QString &rootDir);
-
     struct Priv;
     Priv *priv;
 };

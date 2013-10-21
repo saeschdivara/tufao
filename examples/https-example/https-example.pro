@@ -1,9 +1,13 @@
 TARGET = https-example
 TEMPLATE = app
 
-CONFIG += C++11 TUFAO1
+CONFIG += TUFAO0
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    mainhandler.cpp
+
+HEADERS  += \
+    mainhandler.h
 
 RESOURCES += \
     ssl.qrc

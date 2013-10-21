@@ -21,17 +21,20 @@
 
 #include "../httpserverrequestrouter.h"
 
-#include <QtCore/QVector>
+#include <QtCore/QRegExp>
+#include <QtCore/QPair>
+#include <QtCore/QMap>
 
 namespace Tufao {
 
 class AbstractHttpServerRequestHandler;
 
-//typedef AbstractHttpServerRequestHandler Handler;
+typedef AbstractHttpServerRequestHandler Handler;
 
 struct HttpServerRequestRouter::Priv
 {
-    QVector<Mapping> mappings;
+    QList< QPair<QRegExp, Handler*> > general;
+    QMap< QByteArray, QList< QPair<QRegExp, Handler*> > > methods;
 };
 
 } // namespace Tufao

@@ -8,5 +8,7 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
     WebServer server;
 
+    server.listen(QHostAddress::Any, 8080);
+
     return a.exec();
 }

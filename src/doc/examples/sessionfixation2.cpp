@@ -1,5 +1,6 @@
-bool RequestHandler::handleRequest(Tufao::HttpServerRequest &request,
-                                   Tufao::HttpServerResponse &response)
+bool RequestHandler::handleRequest(Tufao::HttpServerRequest *request,
+                                   Tufao::HttpServerResponse *response,
+                                   const QStringList &)
 {
     // To make sense, this line must be inserted before call any session-related
     // code
@@ -13,7 +14,7 @@ bool RequestHandler::handleRequest(Tufao::HttpServerRequest &request,
         return true;
     }
 
-    store.setProperty(request, response, "user", username);
+    store.setProperty(*request, *response, "user", username);
 
     loginSuccess(response);
     return true;

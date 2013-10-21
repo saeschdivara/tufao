@@ -21,7 +21,7 @@
   */
 
 #include <QtCore/QCoreApplication>
-#include <QtCore/QRegularExpression>
+#include <QtCore/QRegExp>
 
 #include <Tufao/HttpServer>
 #include <Tufao/HttpServerRequestRouter>
@@ -32,14 +32,13 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
     Tufao::HttpServer server;
+    Tufao::HttpServerRequestRouter router;
     MainHandler h;
-    Tufao::HttpServerRequestRouter router{
-        {QRegularExpression{"^/([^/]+)$"}, h},
-        {QRegularExpression{".*"}, h}
-    };
 
-    QObject::connect(&server, &Tufao::HttpServer::requestReady,
-                     &router, &Tufao::HttpServerRequestRouter::handleRequest);
+    router.map(QRegExp("^/([^/]+)$"), &h).map(QRegExp(".*"), &h);
+
+    QObject::connect(&server, SIGNAL(requestReady(Tufao::HttpServerRequest*,Tufao::HttpServerResponse*)),
+                     &router, SLOT(handleRequest(Tufao::HttpServerRequest*,Tufao::HttpServerResponse*)));
 
     server.listen(QHostAddress::Any, 8080);
 

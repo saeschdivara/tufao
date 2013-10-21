@@ -5,8 +5,8 @@ includedir=${prefix}/@includedir@
 
 Name: tufao
 Description: An asynchronous web framework for C++ built on top of Qt
-URL: https://github.com/vinipsmaker/tufao
+URL: http://code.google.com/p/tufao/
 Version: @TUFAO_VERSION@
-Requires: Qt5Core Qt5Network
-Libs: -L${libdir} -l@TUFAO_LIBRARY@
+Requires: QtCore QtNetwork
+Libs: -L${libdir} -ltufao
 Cflags: -I${includedir}

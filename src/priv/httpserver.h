@@ -20,7 +20,6 @@
 #define TUFAO_PRIV_HTTPSERVER_H
 
 #include "../httpserver.h"
-#include "../httpserverrequest.h"
 #include "tcpserverwrapper.h"
 
 namespace Tufao {
@@ -31,20 +30,10 @@ struct HttpServer::Priv
 
     TcpServerWrapper tcpServer;
     int timeout;
-    UpgradeHandler upgradeHandler;
-
-    static UpgradeHandler defaultUpgradeHandler;
-};
-
-HttpServer::UpgradeHandler HttpServer::Priv::defaultUpgradeHandler{
-    [](HttpServerRequest &request, const QByteArray&){
-        request.socket().close();
-    }
 };
 
 inline HttpServer::Priv::Priv() :
-    timeout(120000),
-    upgradeHandler(defaultUpgradeHandler)
+    timeout(120000)
 {}
 
 } // namespace Tufao

@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012, 2013 Vinícius dos Santos Oliveira
+  Copyright (c) 2012 Vinícius dos Santos Oliveira
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -25,44 +25,42 @@
 #include <Tufao/SimpleSessionStore>
 #include <Tufao/Session>
 
-#include <QtCore/QStringList>
-
 ReadHandler::ReadHandler(QObject *parent) :
-    QObject(parent)
+    Tufao::AbstractHttpServerRequestHandler(parent)
 {
 }
 
-bool ReadHandler::handleRequest(Tufao::HttpServerRequest &request,
-                                Tufao::HttpServerResponse &response)
+bool ReadHandler::handleRequest(Tufao::HttpServerRequest *request,
+                                Tufao::HttpServerResponse *response,
+                                const QStringList &args)
 {
-    response.writeHead(Tufao::HttpResponseStatus::OK);
+    response->writeHead(Tufao::HttpServerResponse::OK);
 
     Tufao::SimpleSessionStore &store(Tufao::SimpleSessionStore
                                      ::defaultInstance());
-    Tufao::Session session(store, request, response);
+    Tufao::Session session(store, *request, *response);
 
-    QStringList args = request.customData().toMap()["args"].toStringList();
     const QByteArray property(args.isEmpty()
                               ? QByteArray()
-                              : args[1].toUtf8());
+                              : args.front().toUtf8());
 
     if (property.isEmpty()) {
-        response << "You have the following properties:\n";
+        response->write("You have the following properties:\n");
 
-        QList<QByteArray> properties(store.properties(request, response));
+        QList<QByteArray> properties(store.properties(*request, *response));
         for (int i = 0;i != properties.size();++i)
-            response << properties[i] + '\n';
+            response->write(properties[i] + '\n');
 
-        response.end();
+        response->end();
         return true;
     }
 
     if (!session[property]) {
-        response.end("You don't have a property named " + property);
+        response->end("You don't have a property named " + property);
         return true;
     }
 
-    response.end("session[\"" + property + "\"] == "
-                 + session[property]().toByteArray());
+    response->end("session[\"" + property + "\"] == "
+                  + session[property]().toByteArray());
     return true;
 }

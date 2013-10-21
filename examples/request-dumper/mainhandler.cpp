@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012, 2013 Vinícius dos Santos Oliveira
+  Copyright (c) 2012 Vinícius dos Santos Oliveira
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -23,42 +23,39 @@
 #include "mainhandler.h"
 #include <Tufao/HttpServerRequest>
 #include <Tufao/Headers>
-#include <QtCore/QUrl>
 #include <QtCore/QStringList>
-#include <QtCore/QVariant>
 
 MainHandler::MainHandler(QObject *parent) :
-    QObject(parent)
+    Tufao::AbstractHttpServerRequestHandler(parent)
 {
 }
 
-bool MainHandler::handleRequest(Tufao::HttpServerRequest &request,
-                                Tufao::HttpServerResponse &response)
+bool MainHandler::handleRequest(Tufao::HttpServerRequest *request,
+                                Tufao::HttpServerResponse *response,
+                                const QStringList &args)
 {
-    response.writeHead(Tufao::HttpResponseStatus::OK);
-    response.headers().replace("Content-Type", "text/html; charset=utf-8");
+    response->writeHead(Tufao::HttpServerResponse::OK);
+    response->headers().replace("Content-Type", "text/html; charset=utf-8");
 
-    response << "<html><head><title>Request dumper</title></head><body>"
-                "<p>Method: " << request.method() << "</p><p>Path: "
-             << request.url().toString().toUtf8() << "</p><p>Version: HTTP/1."
-             << (request.httpVersion() == Tufao::HttpVersion::HTTP_1_1
-                 ? "1" : "0")
-             << "</p><p>Headers:</p><ul>";
+    (*response) << "<html><head><title>Request dumper</title></head><body>"
+                   "<p>Method: " << request->method() << "</p><p>Path: "
+                << request->url() << "</p><p>Version: HTTP/1."
+                << QByteArray(1, request->httpVersion() + '0')
+                << "</p><p>Headers:</p><ul>";
 
     {
-        Tufao::Headers headers = request.headers();
+        Tufao::Headers headers = request->headers();
         for (Tufao::Headers::const_iterator i = headers.begin()
              ;i != headers.end();++i) {
-            response << "<li>" << i.key() << ": " << i.value();
+            (*response) << "<li>" << i.key() << ": " << i.value();
         }
     }
-    response << "</ul><p>Args:</p><ul>";
+    (*response) << "</ul><p>Args:</p><ul>";
 
-    QStringList args = request.customData().toMap()["args"].toStringList();
     for (int i = 0;i != args.size();++i) {
-        response << "<li>" << args[i].toUtf8();
+        (*response) << "<li>" << args[i].toUtf8();
     }
 
-    response.end("</ul></body></html>");
+    response->end("</ul></body></html>");
     return true;
 }

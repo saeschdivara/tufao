@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012, 2013 Vinícius dos Santos Oliveira
+  Copyright (c) 2012 Vinícius dos Santos Oliveira
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -20,15 +20,13 @@
   SOFTWARE.
   */
 
+#include "mainhandler.h"
 #include <QtCore/QVariant>
-#include <QtCore/QUrl>
-#include <QtCore/QUrlQuery>
-
 #include <Tufao/HttpServerRequest>
 #include <Tufao/Headers>
+#include <Tufao/Url>
+#include <Tufao/QueryString>
 #include <Tufao/SimpleSessionStore>
-
-#include "mainhandler.h"
 
 #define MANUAL "You can choose an action appending ?action=foobar to the\n" \
     "url, where foobar is the action you want to perform\n" \
@@ -44,40 +42,41 @@ MainHandler::MainHandler(QObject *parent) :
 {
 }
 
-void MainHandler::handleRequest(Tufao::HttpServerRequest &request,
-                                Tufao::HttpServerResponse &response)
+void MainHandler::handleRequest(Tufao::HttpServerRequest *request,
+                                Tufao::HttpServerResponse *response)
 {
-    QUrl url(request.url());
-    QString action(QUrlQuery(url).queryItemValue("action"));
+    Tufao::Url url(request->url());
+    QMap<QByteArray, QByteArray> vars(Tufao::QueryString
+                                      ::parse(url.query().toUtf8()));
     Tufao::SessionStore &store(Tufao::SimpleSessionStore::defaultInstance());
 
-    if (action == "unset") {
-        store.removeSession(request, response);
-        response.writeHead(Tufao::HttpResponseStatus::OK);
-        response.headers().replace("Content-Type", "text/plain");
-        response.end("Success!");
+    if (vars["action"] == "unset") {
+        store.removeSession(*request, *response);
+        response->writeHead(Tufao::HttpServerResponse::OK);
+        response->headers().replace("Content-Type", "text/plain");
+        response->end("Success!");
         return;
-    } else if (action == "set") {
-        store.setProperty(request, response, "what", url.path());
-        response.writeHead(Tufao::HttpResponseStatus::OK);
-        response.headers().replace("Content-Type", "text/plain");
-        response.end("Success!");
-    } else if (action == "view") {
-        response.writeHead(Tufao::HttpResponseStatus::OK);
-        response.headers().replace("Content-Type", "text/plain");
+    } else if (vars["action"] == "set") {
+        store.setProperty(*request, *response, "what", url.path());
+        response->writeHead(Tufao::HttpServerResponse::OK);
+        response->headers().replace("Content-Type", "text/plain");
+        response->end("Success!");
+    } else if (vars["action"] == "view") {
+        response->writeHead(Tufao::HttpServerResponse::OK);
+        response->headers().replace("Content-Type", "text/plain");
 
-        if (!store.hasSession(request)) {
-            response.end("Failure!");
+        if (!store.hasSession(*request)) {
+            response->end("Failure!");
             return;
         }
 
-        response.end("session[\"what\"] = "
-                     + store.property(request, response, "what")
-                     .toByteArray());
+        response->end("session[\"what\"] = "
+                      + store.property(*request, *response, "what")
+                      .toByteArray());
         return;
     }
 
-    response.writeHead(Tufao::HttpResponseStatus::OK);
-    response.headers().replace("Content-Type", "text/plain");
-    response.end(MANUAL);
+    response->writeHead(Tufao::HttpServerResponse::OK);
+    response->headers().replace("Content-Type", "text/plain");
+    response->end(MANUAL);
 }

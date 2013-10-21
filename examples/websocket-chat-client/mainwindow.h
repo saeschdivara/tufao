@@ -1,7 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QtWidgets/QMainWindow>
+#include <QtGui/QMainWindow>
 #include <Tufao/WebSocket>
 
 namespace Ui {

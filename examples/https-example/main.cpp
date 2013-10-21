@@ -25,9 +25,8 @@
 #include <QFile>
 #include <QSslKey>
 #include <QSslCertificate>
-#include <QtCore/QUrl>
-#include <Tufao/HttpServerRequest>
-#include <Tufao/Headers>
+#include "mainhandler.h"
+#include <QDebug>
 
 int main(int argc, char *argv[])
 {
@@ -43,13 +42,10 @@ int main(int argc, char *argv[])
     cert.open(QIODevice::ReadOnly);
     server.setLocalCertificate(QSslCertificate(&cert));
 
-    QObject::connect(&server, &Tufao::HttpsServer::requestReady,
-                     [](Tufao::HttpServerRequest &request,
-                        Tufao::HttpServerResponse &response) {
-                         response.writeHead(Tufao::HttpResponseStatus::OK);
-                         response.headers().replace("Content-Type", "text/plain");
-                         response.end("Hello " + request.url().path().toUtf8());
-                     });
+    MainHandler h;
+
+    QObject::connect(&server, SIGNAL(requestReady(Tufao::HttpServerRequest*,Tufao::HttpServerResponse*)),
+                     &h, SLOT(handleRequest(Tufao::HttpServerRequest*,Tufao::HttpServerResponse*)));
 
     server.listen(QHostAddress::Any, 8080);
 

@@ -1,17 +1,16 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
-#include <Tufao/HttpServerPlugin>
+#include <Tufao/AbstractHttpServerRequestHandlerFactory>
 
-class Plugin: public QObject, Tufao::HttpServerPlugin
+class Plugin: public QObject, Tufao::AbstractHttpServerRequestHandlerFactory
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID TUFAO_HTTPSERVERPLUGIN_IID)
-    Q_INTERFACES(Tufao::HttpServerPlugin)
+    Q_INTERFACES(Tufao::AbstractHttpServerRequestHandlerFactory)
 public:
-    std::function<bool(Tufao::HttpServerRequest&, Tufao::HttpServerResponse&)>
-    createHandler(const QHash<QString, Tufao::HttpServerPlugin*> &dependencies,
-                  const QVariant &customData = QVariant()) override;
+    explicit Plugin(QObject *parent = 0);
+
+    Tufao::AbstractHttpServerRequestHandler *createHandler(QObject *parent);
 };
 
 #endif // PLUGIN_H

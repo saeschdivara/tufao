@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012, 2013 Vinícius dos Santos Oliveira
+  Copyright (c) 2012 Vinícius dos Santos Oliveira
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -24,43 +24,41 @@
 
 #include <Tufao/SimpleSessionStore>
 #include <Tufao/Session>
-
-#include <QtCore/QUrl>
-#include <QtCore/QUrlQuery>
-#include <QtCore/QStringList>
+#include <Tufao/Url>
+#include <Tufao/QueryString>
 
 SetHandler::SetHandler(QObject *parent) :
-    QObject(parent)
+    Tufao::AbstractHttpServerRequestHandler(parent)
 {
 }
 
-bool SetHandler::handleRequest(Tufao::HttpServerRequest &request,
-                               Tufao::HttpServerResponse &response)
+bool SetHandler::handleRequest(Tufao::HttpServerRequest *request,
+                               Tufao::HttpServerResponse *response,
+                               const QStringList &args)
 {
     Tufao::SimpleSessionStore &store(Tufao::SimpleSessionStore
                                      ::defaultInstance());
-    Tufao::Session session(store, request, response);
+    Tufao::Session session(store, *request, *response);
 
-    QStringList args = request.customData().toMap()["args"].toStringList();
     const QByteArray property(args.isEmpty()
                               ? QByteArray()
-                              : args[1].toUtf8());
+                              : args.front().toUtf8());
 
     if (property.isEmpty())
         return false;
 
-    response.writeHead(Tufao::HttpResponseStatus::OK);
+    response->writeHead(Tufao::HttpServerResponse::OK);
 
-    const QByteArray value(QUrlQuery(request.url()).queryItemValue("value")
-                           .toUtf8());
+    const QByteArray query(Tufao::Url(request->url()).query().toUtf8());
+    const QByteArray value(Tufao::QueryString::parse(query).value("value"));
 
     if (value.isEmpty()) {
-        response.end("Invalid value");
+        response->end("Invalid value");
         return true;
     }
 
     session[property] = value;
 
-    response.end("session[\"" + property + "\"] = " + value);
+    response->end("session[\"" + property + "\"] = " + value);
     return true;
 }

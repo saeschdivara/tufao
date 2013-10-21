@@ -2,41 +2,25 @@
 
 #include <QtNetwork/QTcpSocket>
 
+#include <Tufao/AbstractHttpServerRequestHandler>
 #include <Tufao/HttpServerRequest>
 #include <Tufao/Headers>
 
 using namespace Tufao;
 
-Worker::Worker()
+Worker::Worker(Tufao::AbstractHttpServerRequestHandlerFactory *factory) :
+    handler(factory->createHandler(this))
 {
-    connect(this, SIGNAL(initReady()), this, SLOT(init()),
-            Qt::QueuedConnection);
-    connect(this, &Worker::newConnection/*SIGNAL(newConnection(qintptr))*/,
-            this, &Worker::onNewConnection/*SLOT(onNewConnection(qintptr))*/,
-            Qt::QueuedConnection);
+    connect(this, SIGNAL(newConnection(int)), this, SLOT(onNewConnection(int)));
 }
 
-void Worker::setFactory(TcpServer::Factory factory)
-{
-    factoryMutex.lock();
-    this->factory = factory;
-    factoryMutex.unlock();
-    emit initReady();
-}
-
-void Worker::addConnection(qintptr socketDescriptor)
+void Worker::addConnection(int socketDescriptor)
 {
     emit newConnection(socketDescriptor);
 }
 
-void Worker::init()
-{
-    factoryMutex.lock();
-    handler = factory();
-    factoryMutex.unlock();
-}
 
-void Worker::onNewConnection(qintptr socketDescriptor)
+void Worker::onNewConnection(int socketDescriptor)
 {
     QTcpSocket *socket = new QTcpSocket(this);
     if (!socket->setSocketDescriptor(socketDescriptor)) {
@@ -44,10 +28,11 @@ void Worker::onNewConnection(qintptr socketDescriptor)
         return;
     }
 
-    HttpServerRequest *handle = new HttpServerRequest(*socket, this);
+    HttpServerRequest *handle = new HttpServerRequest(socket, this);
 
     connect(handle, SIGNAL(ready()), this, SLOT(onRequestReady()));
-    connect(handle, SIGNAL(upgrade()), this, SLOT(onUpgrade()));
+    connect(handle, SIGNAL(upgrade(QByteArray)),
+            this, SLOT(onUpgrade(QByteArray)));
     connect(socket, SIGNAL(disconnected()), handle, SLOT(deleteLater()));
     connect(socket, SIGNAL(disconnected()), socket, SLOT(deleteLater()));
 }
@@ -56,20 +41,20 @@ void Worker::onRequestReady()
 {
     HttpServerRequest *request = qobject_cast<HttpServerRequest *>(sender());
 
-    QAbstractSocket &socket = request->socket();
+    QAbstractSocket *socket = request->socket();
     HttpServerResponse *response
             = new HttpServerResponse(socket, request->responseOptions(), this);
 
-    connect(&socket, SIGNAL(disconnected()), response, SLOT(deleteLater()));
+    connect(socket, SIGNAL(disconnected()), response, SLOT(deleteLater()));
     connect(response, SIGNAL(finished()), response, SLOT(deleteLater()));
 
     if (request->headers().contains("Expect", "100-continue"))
         response->writeContinue();
 
-    handler(*request, *response);
+    handler->handleRequest(request, response);
 }
 
-void Worker::onUpgrade()
+void Worker::onUpgrade(const QByteArray &)
 {
     HttpServerRequest *request = qobject_cast<HttpServerRequest *>(sender());
     delete request;
