@@ -51,6 +51,11 @@ bool HttpServer::isListening() const
     return priv->tcpServer.isListening();
 }
 
+QString HttpServer::errorString() const
+{
+    return priv->tcpServer.errorString();
+}
+
 quint16 HttpServer::serverPort() const
 {
     return priv->tcpServer.serverPort();

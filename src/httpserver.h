@@ -91,6 +91,13 @@ public:
     bool isListening() const;
 
     /*!
+     * Returns error string
+     *
+     * \return
+     */
+    QString errorString() const;
+
+    /*!
       Returns the server's port if the server is listening; otherwise returns 0.
 
       \sa
