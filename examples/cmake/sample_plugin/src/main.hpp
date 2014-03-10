@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012 Vinícius dos Santos Oliveira
+  Copyright (c) 2013 Timothy Reaves treaves@silverfieldstech.com
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -20,23 +20,16 @@
   SOFTWARE.
   */
 
-#ifndef TUFAO_GLOBAL_H
-#define TUFAO_GLOBAL_H
+#ifndef MAIN_HPP_
+#define MAIN_HPP_
 
-#include <QtCore/qglobal.h>
+#include <QDebug>
+#include <cstdlib>
 
-#if defined(TUFAO_LIBRARY)
-#  define TUFAO_EXPORT Q_DECL_EXPORT
-#else
-#  define TUFAO_EXPORT Q_DECL_IMPORT
-#endif
+// A macro that prints a message and exits the application.
+#define printErrorAndExit(x, ...) qCritical(x, ##__VA_ARGS__);exit(1);
 
-#ifndef TUFAO_VERSION_MAJOR
-#  define TUFAO_VERSION_MAJOR 1
-#endif
+// The MondoDB namespaces
+extern const char * NS_SERVER_SETTINGS;
 
-#ifndef TUFAO_VERSION_MINOR
-#  define TUFAO_VERSION_MINOR 2
-#endif
-
-#endif // TUFAO_GLOBAL_H
+#endif // MAIN_HPP_

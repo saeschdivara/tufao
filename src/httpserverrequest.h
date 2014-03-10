@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012 Vinícius dos Santos Oliveira
+  Copyright (c) 2012, 2013 Vinícius dos Santos Oliveira
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,17 @@
 #include "httpserverresponse.h"
 
 class QAbstractSocket;
+class QUrl;
 
 namespace Tufao {
 
 struct Headers;
+
+enum class HttpVersion
+{
+    HTTP_1_0,
+    HTTP_1_1
+};
 
 /*!
   The Tufao::HttpServer represents a HTTP request received by Tufao::HttpServer.
@@ -48,11 +55,6 @@ class TUFAO_EXPORT HttpServerRequest : public QObject
 {
     Q_OBJECT
 public:
-    enum HttpVersion
-    {
-        HTTP_1_0,
-        HTTP_1_1
-    };
 
     /*!
       Constructs a Tufao::HttpServerRequest object.
@@ -61,8 +63,11 @@ public:
 
       \param socket The connection used by Tufao::HttpServerRequest to receive
       HTTP messages. If you pass NULL, the object will be useless.
+
+      \since
+      1.0
       */
-    explicit HttpServerRequest(QAbstractSocket *socket, QObject *parent = 0);
+    explicit HttpServerRequest(QAbstractSocket &socket, QObject *parent = 0);
 
     /*!
       Destroys the object.
@@ -103,6 +108,17 @@ public:
     QByteArray method() const;
 
     /*!
+      Sets the request URL.
+
+      \sa
+      UrlRewriterHandler
+
+      \since
+      1.0
+     */
+    void setUrl(const QUrl &url);
+
+    /*!
       The request URL.
 
       This contains only the URL that is present in the actual HTTP request.
@@ -112,12 +128,13 @@ public:
           Accept: text/plain\r\n
           \r\n
 
-      Then Tufao::HttpServerRequest::url() will be "/login?username=tux"
+      Then Tufao::HttpServerRequest::url() will be constructed with
+      "/login?username=tux".
 
-      \sa
-      Tufao::Url
+      \since
+      1.0
       */
-    QByteArray url() const;
+    QUrl url() const;
 
     /*!
       The HTTP headers sent by the client. These headers are fully populated
@@ -141,14 +158,13 @@ public:
     Headers &headers();
 
     /*!
-     * \brief body
-     * \return
-     */
-    QByteArray body() const;
-
-    /*!
       The HTTP trailers (if present). Only populated after the
       Tufao::HttpServerRequest::end signal.
+
+      Trailers are headers sent after the body. Some headers can't be computed
+      before the full body is generated. The solution to decrease the network
+      latency is send the body before the associated metadata using the trailers
+      technique.
       */
     Headers trailers() const;
 
@@ -158,12 +174,37 @@ public:
     HttpVersion httpVersion() const;
 
     /*!
+      Read the request's body.
+
+      \return
+      This request's object will buffer every piece of body received. After call
+      this function, the buffered content is returned and the buffer is cleared.
+
+      \note
+      If you only call this function after end() signal, the returned object
+      will be the entire body of the request. Call this function when the data()
+      signal is emitted and save the body to disk if you expect to receive
+      requests with bodies larger than available RAM.
+
+      \sa
+      data()
+      end()
+
+      \since
+      1.0
+     */
+    QByteArray readBody();
+
+    /*!
       The QAbstractSocket object associated with the connection.
 
       This will be a QTcpSocket object if created by Tufao::HttpServer and a
       QSslSocket if created by Tufao::HttpsServer.
+
+      \since
+      1.0
       */
-    QAbstractSocket *socket() const;
+    QAbstractSocket &socket() const;
 
     /*!
       Sets the timeout of new connections to \p msecs miliseconds.
@@ -192,16 +233,35 @@ public:
       */
     Tufao::HttpServerResponse::Options responseOptions() const;
 
-signals:
     /*!
-      \deprecated
+      Returns the user data as set in setCustomData.
 
-      It'll be removed in 1.0 version.
+      \note
+      This data will be erased upon a new request.
 
-      Use ready().
-      */
-    void ready(Tufao::HttpServerResponse::Options);
+      \sa
+      setCustomData
 
+      \since 1.0
+     */
+    QVariant customData() const;
+
+    /*!
+      Sets the custom data to \p data.
+
+      The custom data is a convenience method to allow users of
+      HttpServerRequest to store some data in some requests. It's used in
+      Tufao::HttpServerRequestRouter to pass the list of captured texts in the
+      url to the subsequent handlers.
+
+      \note
+      This data will be erased upon a new request.
+
+      \since 1.0
+     */
+    void setCustomData(const QVariant &data);
+
+signals:
     /*!
       This signal is emitted when most of the data about the request is
       available.
@@ -210,12 +270,15 @@ signals:
       only missing parts may be (if any) the message body and the trailers.
 
       \note
-      It's not safe delete this object after this signal is emitted unless you
-      use a queued connection. If you want to delete this object after this
-      signal was emitted, you can: You should wait for the end or close signal
-        - Wait until a safe signal is emitted (end or close)
-        - Close the connection (only works if you are using Tufao::HttpServer)
-        - Call QObject::deleteLater()
+      __This signal is unsafe__ (read this: \ref safe-signal)!
+
+      \warning
+      Right before emit this signal, HttpServerRequest object will disconnect
+      any slot connected to the signals listed below. This behaviour was chosen
+      to allow you to think about the single HTTP session without worry about
+      the Tufão behaviour of reuse the same objects to the same connections.
+        - HttpServerRequest::data
+        - HttpServerRequest::end
 
       \sa
       Tufao::HttpServerRequest::responseOptions
@@ -229,18 +292,21 @@ signals:
     /*!
       This signal is emitted each time a piece of the message body is received.
 
+      Use readBody() to consume the data.
+
       \note
-      It's not safe delete this object after this signal is emitted unless you
-      use a queued connection. If you want to delete this object after this
-      signal was emitted, you can: You should wait for the end or close signal
-        - Wait until a safe signal is emitted (end or close)
-        - Close the connection (only works if you are using Tufao::HttpServer)
-        - Call QObject::deleteLater()
+      __This signal is unsafe__ (read this: \ref safe-signal)!
+
+      \since
+      1.0
       */
-    void data(QByteArray data);
+    void data();
 
     /*!
       This signal is emitted exactly once for each request.
+
+      Use readBody() to access the request's body and trailers() to access the
+      headers sent after the body.
 
       After that, no more data signals will be emitted for this session. A new
       session (if any) will be only initiated after you respond the request.
@@ -264,9 +330,13 @@ signals:
       HttpServerRequest::end and HttpServerRequest::close won't be
       emitted.
 
-      \param head The initial bytes from the new connection protocol.
+      The body is set to the initial bytes from the new connection session
+      (under the new protocol).
+
+      \since
+      1.0
       */
-    void upgrade(QByteArray head);
+    void upgrade();
 
 private slots:
     void onReadyRead();
