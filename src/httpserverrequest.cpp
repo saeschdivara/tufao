@@ -129,7 +129,9 @@ void HttpServerRequest::onReadyRead()
     if (priv->whatEmit.testFlag(Priv::DATA)) {
         priv->whatEmit &= ~Priv::Signals(Priv::DATA);
         QByteArray body(priv->body);
-        priv->body.clear();
+        //priv->body.clear();
+
+        emit ready();
         emit data(body);
     }
 
@@ -351,8 +353,9 @@ int HttpServerRequest::Priv::on_headers_complete(http_parser *parser)
     if (http_should_keep_alive(&request->priv->parser))
         request->priv->responseOptions |= HttpServerResponse::KEEP_ALIVE;
 
-    if (!parser->upgrade)
+    if (!parser->upgrade && request->priv->method != "POST") {
         request->priv->whatEmit = READY;
+    }
 
     return 0;
 }
